@@ -54,10 +54,6 @@
 
     <repositories>
         <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-        <repository>
             <id>spigotmc-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
@@ -68,11 +64,6 @@
     </repositories>
 
     <dependencies>
-        <dependency>
-            <groupId>com.github.Acablade</groupId>
-            <artifactId>bladecf</artifactId>
-            <version>0.2.1-BETA</version>
-        </dependency>
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
