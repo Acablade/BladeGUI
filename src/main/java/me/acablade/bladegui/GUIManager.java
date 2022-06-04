@@ -9,7 +9,7 @@ import java.util.List;
 
 @RequiredArgsConstructor
 @Getter
-public class GUIManager{
+public class GUIManager {
 
 	private List<Runnable> runnableList = new ArrayList<>();
 	private final JavaPlugin plugin;
