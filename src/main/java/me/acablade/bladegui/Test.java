@@ -18,7 +18,7 @@ public class Test extends JavaPlugin implements Listener {
 
 	private final ItemStack[] materials = Arrays.stream(Material.values())
 			.filter(material -> material.name().contains("STAINED_GLASS_PANE"))
-			.limit(8)
+			.limit(6)
 			.map(ItemStack::new)
 			.collect(Collectors.toList())
 			.toArray(new ItemStack[0]);
@@ -45,13 +45,7 @@ public class Test extends JavaPlugin implements Listener {
 						.update((gui,node) -> turn++)
 						.renderer((gui, node) -> {
 
-							ItemStack array2d[][] = printSpiralOrder(ItemStack.class,materials,node.getHeight(),node.getWidth(),-turn);
-
-
-							int middleX = (int) Math.ceil((node.getWidth() - 1) / 2.0);
-							int middleY = (int) Math.ceil((node.getHeight() - 1) / 2.0);
-//
-//							array2d[middleY][middleX] = new ItemStack(Material.AIR);
+							ItemStack array2d[][] = printSpiralOrder(ItemStack.class,materials,node.getHeight(),node.getWidth(),turn);
 
 							for (int x = node.getLocation().getX(); x < node.getLocation().getX() + node.getWidth(); x++) {
 								for (int y = node.getLocation().getY(); y < node.getLocation().getY() + node.getHeight(); y++) {
@@ -64,31 +58,26 @@ public class Test extends JavaPlugin implements Listener {
 						.height(3)
 						.build();
 		System.out.println(gui.addItemNode(itemNode));
-		gui.register(this,20);
+		gui.register(this,5);
 		Bukkit.getPluginManager().registerEvents(this, this);
 	}
 
-	// wasted embarrasingly a lot of time
-
-	private <T> T[][] printSpiralOrder(Class<T> tClass,T[] arr, int rows, int columns, int turn)
-	{
-		if (arr == null) {
-			return null;
-		}
-
-		T[][] mat = (T[][])Array.newInstance(tClass, rows, columns);
-
+	private int[] calculateCoords(int index, int columns, int rows){
 		int[] currentCoords = {0,0};
 
-		// r,l,u,d
+		char face = 'n';
 
-		char face = 'r';
+		int x = currentCoords[1];
+		int y = currentCoords[0];
 
+		if(y==0) face = 'r';
+		else if(y==rows-1) face = 'l';
+		else if(x==columns-1) face = 'd';
+		else if(x==0) face = 'u';
 
-		for (int i = 0; i < arr.length; i++) {
-
-			int x = currentCoords[1];
-			int y = currentCoords[0];
+		for (int i = 0; i < index; i++) {
+			x = currentCoords[1];
+			y = currentCoords[0];
 
 			if(y==0&&x==columns-1) face = 'd';
 			else if(y==rows-1&&x==columns-1) face = 'l';
@@ -109,7 +98,57 @@ public class Test extends JavaPlugin implements Listener {
 					currentCoords[0]=y+1;
 					break;
 			}
-			mat[currentCoords[0]][currentCoords[1]]=arr[Math.abs(i+turn)%arr.length];
+		}
+		return currentCoords;
+	}
+
+	private <T> T[][] printSpiralOrder(Class<T> tClass,T[] arr, int rows, int columns, int turn)
+	{
+		if (arr == null) {
+			return null;
+		}
+
+		T[][] mat = (T[][])Array.newInstance(tClass, rows, columns);
+
+		int[] currentCoords = calculateCoords(turn,columns,rows);
+
+		// r,l,u,d
+
+		char face = 'r';
+
+		int x = currentCoords[1];
+		int y = currentCoords[0];
+
+		if(y==0) face = 'r';
+		else if(y==rows-1) face = 'l';
+		else if(x==columns-1) face = 'd';
+		else if(x==0) face = 'u';
+
+		for (int i = 0; i < arr.length; i++) {
+
+			x = currentCoords[1];
+			y = currentCoords[0];
+
+			if(y==0&&x==columns-1) face = 'd';
+			else if(y==rows-1&&x==columns-1) face = 'l';
+			else if(y==rows-1&&x==0) face = 'u';
+			else if(y==0&&x==0) face = 'r';
+
+			switch (face){
+				case 'r':
+					currentCoords[1]=x+1;
+					break;
+				case 'l':
+					currentCoords[1]=x-1;
+					break;
+				case 'u':
+					currentCoords[0]=y-1;
+					break;
+				case 'd':
+					currentCoords[0]=y+1;
+					break;
+			}
+			mat[currentCoords[0]][currentCoords[1]]=arr[i%arr.length];
 		}
 
 		return mat;
