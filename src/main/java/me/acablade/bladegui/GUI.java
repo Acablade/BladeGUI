@@ -10,81 +10,103 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Data
-public class GUI implements Listener {
+public class GUI implements Runnable, Listener, InventoryHolder {
+
+	private final Set<ItemNode> itemNodeSet = new HashSet<>();
+	private final Set<UUID> viewers = new HashSet<>();
 
 	private final Inventory inventory;
-	private final long updateTick;
 
-	private BukkitTask task;
+	private final int size;
 
-	private final Map<Integer, BladeItem> itemStackMap;
+	public GUI(String title, int size){
+		this.size = (int) Math.ceil(size/9.0)*9;
+		this.inventory = Bukkit.createInventory(
+				this,
+				this.size,
+				ChatColor.translateAlternateColorCodes('&',title)
+		);
+	}
 
-	private UpdateGUI update;
-
-	private Set<Player> viewers;
-
-	public GUI(String name, int size, long updateTick){
-
-		this.inventory = Bukkit.createInventory(null,clamp(round(size),9,54), ChatColor.translateAlternateColorCodes('&',name));
-		this.updateTick = updateTick;
-		this.itemStackMap = new HashMap<>();
-		this.viewers = new HashSet<>();
-
+	public void register(JavaPlugin plugin, long updateTick){
+		Bukkit.getPluginManager().registerEvents(this, plugin);
+		if(updateTick > 0){
+			Bukkit.getScheduler().runTaskTimer(plugin,this,0,updateTick);
+		}
 	}
 
 
-	public void register(GUIManager manager){
-		Bukkit.getPluginManager().registerEvents(this,manager.getPlugin());
-		if(this.updateTick<=0) return;
-		if(this.task!=null) return;
-		this.task = Bukkit.getScheduler().runTaskTimer(manager.getPlugin(), () -> {
-			update.update(this);
-		},0,updateTick);
+	public Optional<ItemNode> getItemNode(ItemNode.Location location){
+		return getItemNode(location.getX(), location.getY());
 	}
 
-	public void addItem(ItemStack itemStack, InventoryClickHandler clickHandler){
-		this.addItem(new BladeItem(itemStack,clickHandler));
+
+	public Optional<ItemNode> getItemNode(int x, int y){
+		for(ItemNode node: itemNodeSet){
+
+			ItemNode.Location location = node.getLocation();
+
+			if(location.getX() == x && location.getY() == y) return Optional.of(node);
+
+			int maxX = location.getX()+node.getWidth()-1;
+			int maxY = location.getY()+node.getHeight()-1;
+
+			boolean isInsideX = x >= location.getX() && x <= maxX;
+			boolean isInsideY = y >= location.getY() && y <= maxY;
+
+			if(isInsideX && isInsideY) return Optional.of(node);
+		}
+		return Optional.empty();
 	}
 
-	public void addItem(BladeItem bladeItem){
-		this.setItem(inventory.firstEmpty(),bladeItem);
-
+	public boolean addItemNode(ItemNode itemNode){
+		if(getItemNode(itemNode.getLocation()).isPresent()) return false;
+		int[] coords = toCoordinate(size-1);
+		if(itemNode.getLocation().getX()+itemNode.getWidth()>coords[0] || itemNode.getLocation().getY()+itemNode.getHeight()>coords[1]) return false;
+		itemNodeSet.add(itemNode);
+		return true;
 	}
 
-	public void setItem(int slot, ItemStack itemStack, InventoryClickHandler clickHandler){
-		this.setItem(slot, new BladeItem(itemStack,clickHandler));
+	@Override
+	public void run() {
+		this.getInventory().clear();
+		for(ItemNode itemNode : itemNodeSet) {
+			if (itemNode.getRenderer() != null) itemNode.getRenderer().accept(this,itemNode);
+			if (itemNode.getUpdate() != null) itemNode.getUpdate().accept(this,itemNode);
+		}
 	}
 
-	public void setItem(int slot, BladeItem bladeItem){
-		itemStackMap.put(slot,bladeItem);
-		inventory.setItem(slot, bladeItem.getItemStack());
+	private int[] toCoordinate(int slot){
+		int y = slot/9;
+		int x = slot-y*9;
+		return new int[]{x, y};
 	}
 
-	private int clamp(int value, int min, int max){
-		return Math.min(Math.max(min,value),max);
+	public int toSlot(int x, int y){
+		return y*9+x;
 	}
 
-	private int round(int value){
-		return (int) Math.ceil(value/9.0)*9;
+	public void open(Player player){
+		player.closeInventory();
+		player.openInventory(getInventory());
 	}
-
 
 	@EventHandler
 	public void onClick(InventoryClickEvent event){
 		if(event.getClickedInventory()!=event.getView().getTopInventory()) return;
-		if(!this.viewers.contains((Player)event.getWhoClicked())) return;
+		if(!this.viewers.contains(event.getWhoClicked().getUniqueId())) return;
 		int slot = event.getSlot();
-		if(!itemStackMap.containsKey(slot)) return;
-		InventoryReturnType returnType = itemStackMap.get(slot).clickHandler.handle(event);
+		int[] coords = toCoordinate(slot);
+		Optional<ItemNode> itemNodeOptional = getItemNode(coords[0],coords[1]);
+		if(!itemNodeOptional.isPresent()) return;
+		ItemNode node = itemNodeOptional.get();
+		ItemNode.InventoryReturnType returnType = node.getClick().handle(node,event);
 		switch (returnType){
 			case CLOSE:
 				event.getWhoClicked().closeInventory();
@@ -97,29 +119,12 @@ public class GUI implements Listener {
 	@EventHandler
 	public void onOpen(InventoryOpenEvent event){
 		if(event.getInventory()!=this.inventory) return;
-		viewers.add((Player)event.getPlayer());
+		viewers.add(event.getPlayer().getUniqueId());
 	}
 
 	@EventHandler
 	public void onClose(InventoryCloseEvent event){
 		if(event.getInventory()!=this.inventory) return;
-		viewers.remove((Player)event.getPlayer());
+		viewers.remove(event.getPlayer().getUniqueId());
 	}
-
-	@Data
-	public class BladeItem{
-
-		private final ItemStack itemStack;
-		private final InventoryClickHandler clickHandler;
-
-	}
-
-	public interface InventoryClickHandler{
-		InventoryReturnType handle(InventoryClickEvent event);
-	}
-
-	public enum InventoryReturnType{
-		CLOSE,CANCEL
-	}
-
 }
