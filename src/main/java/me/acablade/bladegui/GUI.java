@@ -68,7 +68,7 @@ public class GUI implements Runnable, Listener, InventoryHolder {
 	public boolean addItemNode(ItemNode itemNode){
 		if(getItemNode(itemNode.getLocation()).isPresent()) return false;
 		int[] coords = toCoordinate(size-1);
-		if(itemNode.getLocation().getX()+itemNode.getWidth()>coords[0] || itemNode.getLocation().getY()+itemNode.getHeight()>coords[1]) return false;
+		if(itemNode.getLocation().getX()+(itemNode.getWidth()-1)>coords[0] || itemNode.getLocation().getY()+(itemNode.getHeight()-1)>coords[1]) return false;
 		itemNodeSet.add(itemNode);
 		return true;
 	}
