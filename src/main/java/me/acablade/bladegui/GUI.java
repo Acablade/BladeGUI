@@ -4,13 +4,16 @@ import lombok.Data;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
@@ -111,9 +114,20 @@ public class GUI implements Runnable, Listener, InventoryHolder {
 			case CLOSE:
 				event.getWhoClicked().closeInventory();
 			case CANCEL:
-				event.setCancelled(true);
+				event.setResult(Event.Result.DENY);
 		}
 
+	}
+
+	@EventHandler
+	public void onDrag(InventoryDragEvent event){
+		InventoryView view = event.getView();
+		Inventory top = view.getTopInventory();
+
+		// We are only processing drags that affect menus
+		if (top.getHolder() instanceof GUI) {
+			event.setResult(Event.Result.DENY);
+		}
 	}
 
 	@EventHandler
