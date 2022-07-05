@@ -26,6 +26,8 @@ public class GUI implements Runnable, Listener, InventoryHolder {
 
 	private final Inventory inventory;
 
+	private boolean registered;
+
 	private final int size;
 
 	public GUI(String title, int size){
@@ -38,6 +40,7 @@ public class GUI implements Runnable, Listener, InventoryHolder {
 	}
 
 	public void register(JavaPlugin plugin, long updateTick){
+		this.registered = true;
 		Bukkit.getPluginManager().registerEvents(this, plugin);
 		if(updateTick > 0){
 			Bukkit.getScheduler().runTaskTimer(plugin,this,0,updateTick);
