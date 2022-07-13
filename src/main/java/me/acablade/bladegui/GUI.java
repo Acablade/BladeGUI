@@ -26,6 +26,8 @@ public class GUI implements Runnable, Listener, InventoryHolder {
 
 	private final Inventory inventory;
 
+	private ItemNode.InventoryReturnType defaultReturn = ItemNode.InventoryReturnType.CANCEL;
+
 	private boolean registered;
 
 	private final int size;
@@ -37,6 +39,10 @@ public class GUI implements Runnable, Listener, InventoryHolder {
 				this.size,
 				ChatColor.translateAlternateColorCodes('&',title)
 		);
+	}
+
+	public void setDefaultReturn(ItemNode.InventoryReturnType defaultReturn) {
+		this.defaultReturn = defaultReturn;
 	}
 
 	public void register(JavaPlugin plugin, long updateTick){
@@ -110,9 +116,18 @@ public class GUI implements Runnable, Listener, InventoryHolder {
 		int slot = event.getSlot();
 		int[] coords = toCoordinate(slot);
 		Optional<ItemNode> itemNodeOptional = getItemNode(coords[0],coords[1]);
-		if(!itemNodeOptional.isPresent()) return;
+		ItemNode.InventoryReturnType returnType = defaultReturn;
+		if(!itemNodeOptional.isPresent()){
+			switch (returnType){
+				case CLOSE:
+					event.getWhoClicked().closeInventory();
+				case CANCEL:
+					event.setResult(Event.Result.DENY);
+			}
+			return;
+		}
 		ItemNode node = itemNodeOptional.get();
-		ItemNode.InventoryReturnType returnType = node.getClick().handle(node,event);
+		returnType = node.getClick().handle(node,event);
 		switch (returnType){
 			case CLOSE:
 				event.getWhoClicked().closeInventory();
