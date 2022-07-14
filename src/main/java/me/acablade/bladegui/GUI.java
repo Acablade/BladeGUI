@@ -111,7 +111,11 @@ public class GUI implements Runnable, Listener, InventoryHolder {
 
 	@EventHandler
 	public void onClick(InventoryClickEvent event){
-		if(event.getClickedInventory()!=event.getView().getTopInventory()||event.isShiftClick()) return;
+		if(event.isShiftClick()) {
+			event.setResult(Event.Result.DENY);
+			return;
+		}
+		if(event.getClickedInventory()!=event.getView().getTopInventory()) return;
 		if(!this.viewers.contains(event.getWhoClicked().getUniqueId())) return;
 		int slot = event.getSlot();
 		int[] coords = toCoordinate(slot);
